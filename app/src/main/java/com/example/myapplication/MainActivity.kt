@@ -57,7 +57,11 @@ fun MainAppStructure() {
     val prefs = context.getSharedPreferences(SmsForegroundService.PREF_NAME, Context.MODE_PRIVATE)
     var userToken by remember { mutableStateOf(prefs.getString(SmsForegroundService.KEY_USER_TOKEN, "") ?: "") }
     var interval by remember { mutableStateOf(prefs.getInt(SmsForegroundService.KEY_INTERVAL, 1).toString()) }
-    var apiEndpoint by remember { mutableStateOf(prefs.getString(SmsForegroundService.KEY_ENDPOINT, "SMS") ?: "SMS") }
+    
+    // Change: Default value is now the Base URL, not just "SMS"
+    var apiEndpoint by remember { 
+        mutableStateOf(prefs.getString(SmsForegroundService.KEY_ENDPOINT, "https://6948e8b21ee66d04a4507a69.mockapi.io/") ?: "https://6948e8b21ee66d04a4507a69.mockapi.io/") 
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -86,7 +90,7 @@ fun MainAppStructure() {
                     OutlinedTextField(
                         value = apiEndpoint,
                         onValueChange = { apiEndpoint = it },
-                        label = { Text("API Endpoint (e.g. SMS)") },
+                        label = { Text("Base API Address (without /SMS)") }, // Updated Label
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(16.dp))

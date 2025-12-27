@@ -30,9 +30,9 @@ data class SmsApiResponse(
 )
 
 interface SmsApiService {
-    // We use @Url to pass the endpoint dynamically
+    // We use @Url to pass the FULL URL dynamically
     @GET
-    suspend fun getSmsData(@Url url: String): List<SmsApiResponse>
+    suspend fun getSmsData(@Url fullUrl: String): List<SmsApiResponse>
 }
 
 class SmsForegroundService : Service() {
@@ -44,9 +44,10 @@ class SmsForegroundService : Service() {
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
 
+    // We use a dummy base URL because we will override it with @Url at runtime
     private val apiService by lazy {
         Retrofit.Builder()
-            .baseUrl("https://6948e8b21ee66d04a4507a69.mockapi.io/")
+            .baseUrl("https://dummy.com/") 
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(SmsApiService::class.java)
@@ -96,9 +97,7 @@ class SmsForegroundService : Service() {
             while (isServiceRunning) {
                 // 1. Read Settings
                 val prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-                // Default to 1 minute if not set
                 var intervalMinutes = prefs.getInt(KEY_INTERVAL, 1)
-                // Ensure interval is between 1 and 60
                 if (intervalMinutes < 1) intervalMinutes = 1
                 if (intervalMinutes > 60) intervalMinutes = 60
 
@@ -122,15 +121,23 @@ class SmsForegroundService : Service() {
         }
 
         try {
-            // Read endpoint from settings, default to "SMS"
-            val endpoint = prefs.getString(KEY_ENDPOINT, "SMS") ?: "SMS"
-            // Read user key (for future use or logging)
+            // Read base URL from settings
+            // Default: https://6948e8b21ee66d04a4507a69.mockapi.io/
+            var baseUrl = prefs.getString(KEY_ENDPOINT, "https://6948e8b21ee66d04a4507a69.mockapi.io/") ?: "https://6948e8b21ee66d04a4507a69.mockapi.io/"
+            
+            // Ensure base URL ends with /
+            if (!baseUrl.endsWith("/")) {
+                baseUrl += "/"
+            }
+
+            // Append "SMS" to create the full URL
+            val fullUrl = baseUrl + "SMS"
+            
             val userKey = prefs.getString(KEY_USER_TOKEN, "") ?: ""
             
-            Log.d(TAG, "Fetching from endpoint: $endpoint using Key: $userKey")
+            Log.d(TAG, "Fetching from Full URL: $fullUrl using Key: $userKey")
 
-            // Pass the endpoint dynamically
-            val smsDataList = apiService.getSmsData(endpoint)
+            val smsDataList = apiService.getSmsData(fullUrl)
             Log.d(TAG, "API data received: ${smsDataList.size} items.")
 
             if (smsDataList.isNotEmpty()) {
